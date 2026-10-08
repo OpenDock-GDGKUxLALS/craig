@@ -1,0 +1,68 @@
+# NAS deployment of Craig. Same services as src/docker-compose.yml, written for
+# the Compose v2.20 that DSM ships (no "env_file: - path:" form) and reading
+# everything from the .env next to this file.
+name: craig
+
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-craig}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-craig}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-bookworm
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  craig:
+    # "docker compose pull" takes upstream's prebuilt image; "docker compose
+    # build" builds ./src instead (needed once the fork differs from upstream).
+    image: ghcr.io/craigchat/craig:${CRAIG_IMAGE_TAG:-master}
+    build:
+      context: ./src
+      args:
+        CRAIG_VERSION: ${CRAIG_VERSION:-local}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-craig}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-craig}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DATABASE: ${REDIS_DATABASE:-0}
+      REDIS_PREFIX: ${REDIS_PREFIX:-craig:}
+      REC_DIRECTORY: /data/rec
+      DOWNLOADS_DIRECTORY: /data/downloads
+      OUTPUT_DIRECTORY: /data/output
+      BOT_LOCALE_FOLDER: /opt/craig/locale
+      KITCHEN_URL: http://127.0.0.1:9000
+      WEBAPP_URL: ws://127.0.0.1:9002/shard
+    volumes:
+      - ./craig-data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+# Nothing here publishes a port. Each public port has its own Compose project
+# next to this one (../craig-dashboard, ../craig-dl, ../craig-ez, ../craig-web),
+# because DSM only recognizes one published port per project. They relay TCP
+# to the craig container over this project network, craig_default.
+
+volumes:
+  postgres-data:

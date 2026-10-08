@@ -1,0 +1,19 @@
+# Ennuizel, the in-browser audio editor that the download page opens for
+# "edit in browser". Static files built from https://github.com/CraigChat/ennuizel
+# with its ennuizel-craig-plugin submodule, at the commits in ./COMMIT
+# (yarn install --frozen-lockfile && yarn build, then dist/ copied to ./site).
+# It loads recordings from the streamer behind ../craig-ez, named by the a=
+# parameter that the download page adds (PUBLIC_ENNUIZEL_API_HOSTNAME in
+# ../craig/.env).
+name: craig-edit
+
+services:
+  site:
+    image: nginx:1.29-alpine
+    container_name: craig-edit
+    restart: unless-stopped
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "9004:80"

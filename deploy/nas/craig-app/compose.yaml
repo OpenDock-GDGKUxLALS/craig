@@ -1,0 +1,17 @@
+# Craig Webapp frontend: the page people open to join a recording from a
+# browser. Static files built from https://github.com/CraigChat/webapp at the
+# commit in ./COMMIT (yarn install --frozen-lockfile && yarn build, then dist/
+# copied to ./site). It talks to the webapp server behind ../craig-web, chosen
+# by the custom= parameter in WEBAPP_CONNECT_URL (../craig/.env).
+name: craig-app
+
+services:
+  site:
+    image: nginx:1.29-alpine
+    container_name: craig-app
+    restart: unless-stopped
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "9003:80"

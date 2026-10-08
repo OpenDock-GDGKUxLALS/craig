@@ -1,0 +1,21 @@
+# Public port 9100 of Craig: ferret (recording download pages).
+# A plain TCP relay to the craig container in ../craig, so HTTP, WebSocket and
+# large downloads pass through untouched. Start ../craig first: it creates the
+# network.
+name: craig-dl
+
+services:
+  proxy:
+    image: alpine/socat:1.8.0.3
+    container_name: craig-dl
+    restart: unless-stopped
+    command: TCP-LISTEN:9100,fork,reuseaddr,nodelay TCP:craig:9100,nodelay
+    ports:
+      - "9100:9100"
+    networks:
+      - craig
+
+networks:
+  craig:
+    name: craig_default
+    external: true

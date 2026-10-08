@@ -1,0 +1,21 @@
+# Public port 9200 of Craig: dashboard.
+# A plain TCP relay to the craig container in ../craig, so HTTP, WebSocket and
+# large downloads pass through untouched. Start ../craig first: it creates the
+# network.
+name: craig-dashboard
+
+services:
+  proxy:
+    image: alpine/socat:1.8.0.3
+    container_name: craig-dashboard
+    restart: unless-stopped
+    command: TCP-LISTEN:9200,fork,reuseaddr,nodelay TCP:craig:9200,nodelay
+    ports:
+      - "9200:9200"
+    networks:
+      - craig
+
+networks:
+  craig:
+    name: craig_default
+    external: true
